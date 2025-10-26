@@ -1,3 +1,6 @@
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://aadhaar-fraud-detection-ai.streamlit.app)
+
+
 🔎 Aadhaar Card Fraud Detection System
 
 This project implements a comprehensive system for analyzing uploaded Aadhaar card images (front and back) to detect potential signs of fraud. The system utilizes Computer Vision (YOLOv8) for field localization, Optical Character Recognition (OCR) for text extraction, and advanced cryptographic checks (Verhoeff checksum, Secure QR code decoding) for data validation and cross-referencing.
