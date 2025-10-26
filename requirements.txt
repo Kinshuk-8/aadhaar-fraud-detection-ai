@@ -1,0 +1,13 @@
+This file lists all necessary Python packages and their approximate versions to ensure a stable environment.
+
+streamlit>=1.20.0
+Pillow>=9.0.0
+numpy
+pytesseract
+ultralytics>=8.0.0
+opencv-python>=4.7.0.0
+pyzbar
+pyaadhaar
+# Add torch dependency with a specific version if required for your setup, 
+# otherwise ultralytics will manage it, but it's best to specify it.
+torch>=2.0.0
