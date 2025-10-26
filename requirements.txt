@@ -2,10 +2,8 @@ streamlit
 ultralytics
 opencv-python
 pytesseract
-easyocr
 pillow
 numpy
-pandas
-pyaadhaar
-PyMuPDF
 matplotlib
+pyaadhaar
+protobuf
