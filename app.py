@@ -21,19 +21,15 @@ if platform.system() == "Windows":
     # Change this to your local Windows Tesseract path if different
     try:
         pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-        pytesseract.get_tesseract_version()  # Test if Tesseract is found
+        pytesseract.get_tesseract_version()
     except Exception as e:
         st.error(f"Tesseract not found at 'C:/Program Files/Tesseract-OCR/tesseract.exe'. Please update the path. Error: {e}")
         st.stop()
 elif platform.system() in ["Linux", "Darwin"]:
     # Streamlit Cloud / Linux default path, relies on packages.txt for installation
-    if os.path.exists("/usr.bin/tesseract"):
+    if os.path.exists("/usr/bin/tesseract"):
         pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
-    else:
-        # This error is usually suppressed on Streamlit Cloud if packages.txt is correct.
-        st.warning(
-            "Tesseract not found at expected path. Ensure 'tesseract-ocr' is listed in packages.txt"
-        )
+    # The 'else' block containing the st.warning() has been REMOVED here, as requested.
 
 
 # --- Global Device Setup (For YOLO) ---
@@ -496,7 +492,7 @@ def perform_analysis(front_image_pil, back_image_pil, do_qr_check, custom_model,
     else:
         analysis_results["assessment"] = "LOW"
         if not any(ind.startswith("🔴") or ind.startswith("🟡") for ind in analysis_results["indicators"]):
-              analysis_results["indicators"].append("✅ LOW: All checks passed.")
+             analysis_results["indicators"].append("✅ LOW: All checks passed.")
 
     return analysis_results
 
