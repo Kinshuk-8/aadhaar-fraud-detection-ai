@@ -21,9 +21,9 @@ if platform.system() == "Windows":
     # Change this to your local Windows Tesseract path if different
     try:
         pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-        pytesseract.get_tesseract_version() # Test if Tesseract is found
+        pytesseract.get_tesseract_version()  # Test if Tesseract is found
     except Exception as e:
-        st.error(f"Tesseract not found at r'C:\Program Files\Tesseract-OCR\tesseract.exe'. Please update the path. Error: {e}")
+        st.error(f"Tesseract not found at 'C:/Program Files/Tesseract-OCR/tesseract.exe'. Please update the path. Error: {e}")
         st.stop()
 elif platform.system() in ["Linux", "Darwin"]:
     # Streamlit Cloud / Linux default path, relies on packages.txt for installation
@@ -34,6 +34,7 @@ elif platform.system() in ["Linux", "Darwin"]:
         st.warning(
             "Tesseract not found at expected path. Ensure 'tesseract-ocr' is listed in packages.txt"
         )
+
 
 # --- Global Device Setup (For YOLO) ---
 def get_device():
