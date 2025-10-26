@@ -10,11 +10,25 @@ from pyzbar.pyzbar import decode as pyzbar_decode
 from pyaadhaar.utils import isSecureQr
 from pyaadhaar.decode import AadhaarSecureQr
 import re
-import torch  # <-- CHANGED: Added torch import
+import torch  
+import platform
 
 # --- Page Configuration ---
 st.set_page_config(page_title="Aadhaar Fraud Detection", layout="wide")
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+
+# --- Configure Tesseract path based on environment ---
+if platform.system() == "Windows":
+    # Change this to your local Windows Tesseract path
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+elif platform.system() in ["Linux", "Darwin"]:
+    # Streamlit Cloud / Linux default
+    if os.path.exists("/usr/bin/tesseract"):
+        pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
+    else:
+        raise EnvironmentError(
+            "Tesseract not found! On Streamlit Cloud, add 'tesseract-ocr' to packages.txt"
+        )
 
 # --- CHANGED: Global Device Setup ---
 def get_device():
