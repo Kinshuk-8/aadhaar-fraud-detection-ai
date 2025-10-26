@@ -27,7 +27,7 @@ if platform.system() == "Windows":
         st.stop()
 elif platform.system() in ["Linux", "Darwin"]:
     # Streamlit Cloud / Linux default path, relies on packages.txt for installation
-    if os.path.exists("/usr/bin/tesseract"):
+    if os.path.exists("/usr.bin/tesseract"):
         pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
     else:
         # This error is usually suppressed on Streamlit Cloud if packages.txt is correct.
@@ -40,12 +40,12 @@ elif platform.system() in ["Linux", "Darwin"]:
 def get_device():
     """Checks for available hardware accelerator."""
     if torch.cuda.is_available():
-        print("Using CUDA (NVIDIA GPU)")
+        # print("Using CUDA (NVIDIA GPU)") # Commented out print statements for cleaner Streamlit deployment
         return 'cuda'
     if torch.backends.mps.is_available():
-        print("Using MPS (Apple Silicon GPU)")
+        # print("Using MPS (Apple Silicon GPU)")
         return 'mps'
-    print("Using CPU")
+    # print("Using CPU")
     return 'cpu'
 
 DEVICE = get_device()
@@ -53,28 +53,28 @@ DEVICE = get_device()
 # --- 1. MODEL LOADING (Cached) ---
 @st.cache_resource
 def load_yolo_model(model_path):
-    print(f"Loading custom model from {model_path}...")
+    # print(f"Loading custom model from {model_path}...")
     if not os.path.exists(model_path):
         st.error(f"Custom model not found at path: {model_path}. Make sure 'best.pt' is uploaded.")
         return None
     try:
         model = YOLO(model_path)
-        print("Custom model loaded successfully.")
+        # print("Custom model loaded successfully.")
         return model
     except Exception as e:
-        print(f"Error loading custom model: {e}")
+        # print(f"Error loading custom model: {e}")
         st.error(f"Error loading custom model: {e}")
         return None
 
 @st.cache_resource
 def load_general_model():
-    print("Loading general model (yolov8n.pt)...")
+    # print("Loading general model (yolov8n.pt)...")
     try:
         model = YOLO("yolov8n.pt")
-        print("General model loaded successfully.")
+        # print("General model loaded successfully.")
         return model
     except Exception as e:
-        print(f"Error loading general model: {e}")
+        # print(f"Error loading general model: {e}")
         st.error(f"Error loading general model: {e}")
         return None
 
@@ -245,9 +245,10 @@ def normalize_date(date_str):
     return date_str.replace('-', '/').replace('.', '/')
 
 # --- 7. MAIN ANALYSIS PIPELINE ---
-def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
+def perform_analysis(front_image_pil, back_image_pil, do_qr_check, custom_model, general_model):
     """
     Runs the full analysis pipeline using YOLO for ROIs.
+    Accepts an optional back_image_pil.
     """
     
     analysis_results = {
@@ -256,14 +257,15 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
         "ocr_data": {},
         "qr_data": {},
         "annotated_image": None,
-        "assessment": "LOW"
+        "assessment": "LOW",
+        "back_image_qr_data": None # New field for back image QR data
     }
     
     # --- A: Front Image OCR & Bounding Boxes ---
-    img_np = np.array(image_pil.convert("RGB"))
+    img_np = np.array(front_image_pil.convert("RGB"))
     yolo_results = custom_model(img_np, device=DEVICE, conf=0.25, verbose=False)
     
-    annotated_img = image_pil.copy()
+    annotated_img = front_image_pil.copy()
     draw = ImageDraw.Draw(annotated_img)
     try:
         font = ImageFont.truetype("arial.ttf", 20)
@@ -278,7 +280,7 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
             coords = box.xyxy[0].cpu().numpy().astype(int)
             x1, y1, x2, y2 = coords
 
-            crop = image_pil.crop((x1, y1, x2, y2))
+            crop = front_image_pil.crop((x1, y1, x2, y2))
             processed_crop = preprocess_for_ocr(crop)
             text = ocr_text(processed_crop, label)
 
@@ -291,7 +293,7 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
 
     if not analysis_results["ocr_data"]:
         analysis_results["fraud_score"] += 5
-        analysis_results["indicators"].append("🔴 HIGH: Could not extract any text fields. Check image quality or model.")
+        analysis_results["indicators"].append("🔴 HIGH: Could not extract any text fields from the **Front Image**. Check image quality or model.")
 
     # --- B: Face Detection ---
     face_results = general_model(img_np, classes=[0], device=DEVICE, conf=0.4, verbose=False)
@@ -315,7 +317,7 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
             raw_dob_text = value
             break
 
-    # 2. Clean and Extract DOB (FIXED LOGIC to ensure ocr_dob is captured)
+    # 2. Clean and Extract DOB 
     ocr_dob = ""
     if raw_dob_text:
         # Step 1: Apply error correction (converts 4->1 and separators to '/')
@@ -347,12 +349,25 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
 
 
     # 3. Update the dictionary with the *cleaned* DOB for JSON output
-    # This loop ensures the JSON output reflects the date used for validation
     for key in list(analysis_results["ocr_data"].keys()):
         if "dob" in key.lower() or "date" in key.lower():
             analysis_results["ocr_data"][key] = ocr_dob
     
-    # 4. Validation Checks
+    # 4. Aadhaar Number OCR Correction Heuristic (NEW BLOCK)
+    if ocr_aadhaar_num:
+        cleaned_num = re.sub(r'\s+', '', ocr_aadhaar_num)
+        
+        # Heuristic 1: If 12 digits, fails checksum, and starts with '9', try '8' 
+        if len(cleaned_num) == 12 and cleaned_num.startswith('9') and not verhoeff_validate(cleaned_num):
+            potential_fix = '8' + cleaned_num[1:]
+            if verhoeff_validate(potential_fix):
+                ocr_aadhaar_num = potential_fix
+                analysis_results["indicators"].append(f"🟡 MEDIUM: Aadhaar number corrected from '{cleaned_num}' to '{ocr_aadhaar_num}' (Passed Checksum after correction).")
+        
+        # Heuristic 2: Replace common OCR confusions (e.g., O for 0, I for 1)
+        ocr_aadhaar_num = ocr_aadhaar_num.replace('O', '0').replace('I', '1').replace('o', '0').replace('l', '1')
+
+    # 5. Validation Checks (using the potentially corrected ocr_aadhaar_num)
     
     # Aadhaar Number
     an_val = validate_aadhaar_number(ocr_aadhaar_num)
@@ -402,42 +417,69 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
         analysis_results["fraud_score"] += 1
         analysis_results["indicators"].append(f"🟡 MEDIUM: Gender '{ocr_gender}' is {gender_val}.")
 
-    # --- D: QR Code Verification (if toggled) ---
+    # --- D: QR Code Verification (if toggled, on FRONT and then BACK) ---
     if do_qr_check:
-        image_np_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
-        qr_data = decode_secure_qr(image_np_bgr)
-        analysis_results["qr_data"] = qr_data
+        qr_found = False
         
-        if "error" in qr_data:
-            analysis_results["fraud_score"] += 3
-            analysis_results["indicators"].append(f"🔴 HIGH: QR Code Error - {qr_data['error']}.")
-        else:
-            analysis_results["indicators"].append("✅ LOW: Secure QR Code decoded successfully.")
+        # 1. Check Front Image
+        image_np_bgr_front = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+        qr_data_front = decode_secure_qr(image_np_bgr_front)
+        
+        if "error" not in qr_data_front:
+            analysis_results["qr_data"] = qr_data_front
+            analysis_results["indicators"].append("✅ LOW: Secure QR Code decoded successfully from **Front Image**.")
+            qr_found = True
+        elif back_image_pil is not None:
+            # 2. Check Back Image if front failed and back exists
+            image_np_back = np.array(back_image_pil.convert("RGB"))
+            image_np_bgr_back = cv2.cvtColor(image_np_back, cv2.COLOR_RGB2BGR)
+            qr_data_back = decode_secure_qr(image_np_bgr_back)
             
-            # --- E: Cross-Reference OCR with QR Data ---
+            if "error" not in qr_data_back:
+                # Store the successful back data in the primary qr_data field for cross-check
+                analysis_results["qr_data"] = qr_data_back
+                analysis_results["back_image_qr_data"] = qr_data_back # Store separately for UI clarity
+                analysis_results["indicators"].append("✅ LOW: Secure QR Code decoded successfully from **Back Image**.")
+                qr_found = True
+            else:
+                # Both images failed
+                analysis_results["fraud_score"] += 3
+                analysis_results["indicators"].append(f"🔴 HIGH: QR Code Error - Failed on both images. Front Error: {qr_data_front.get('error', 'N/A')}, Back Error: {qr_data_back.get('error', 'N/A')}")
+
+        elif "error" in qr_data_front:
+             # Only front image uploaded, and it failed
+            analysis_results["fraud_score"] += 3
+            analysis_results["indicators"].append(f"🔴 HIGH: QR Code Error - {qr_data_front.get('error', 'Could not read front QR')}.")
+
+        
+        # --- E: Cross-Reference OCR with QR Data (Only if QR was found) ---
+        if qr_found:
+            qr_data = analysis_results["qr_data"]
             qr_name = qr_data.get("name", "")
             qr_dob = qr_data.get("dob", "")
             qr_gender = qr_data.get("gender", "")
             qr_aadhaar_last_4 = qr_data.get("aadhar_last_4_digit", "")
 
             # 1. Name check
-            if ocr_name and qr_name and ocr_name.lower() not in qr_name.lower() and qr_name.lower() not in ocr_name.lower():
+            # Normalizing comparison by removing spaces and comparing lower case
+            clean_ocr_name = re.sub(r'\s+', '', ocr_name).lower()
+            clean_qr_name = re.sub(r'\s+', '', qr_name).lower()
+            
+            if ocr_name and qr_name and clean_ocr_name not in clean_qr_name and clean_qr_name not in clean_ocr_name:
                  analysis_results["fraud_score"] += 3
                  analysis_results["indicators"].append(f"🔴 HIGH: Name Mismatch. OCR: '{ocr_name}', QR: '{qr_name}'")
             
-            # 2. DOB check (THIS SECTION IS COMMENTED OUT AS REQUESTED)
-            # if ocr_dob and qr_dob and normalize_date(ocr_dob) != normalize_date(qr_dob):
-            #      analysis_results["fraud_score"] += 3
-            #      analysis_results["indicators"].append(f"🔴 HIGH: DOB Mismatch. OCR: '{ocr_dob}', QR: '{qr_dob}'")
+            # DOB check is commented out as requested in original code
 
-            # 3. Gender check
+            # 2. Gender check
             if ocr_gender and qr_gender:
+                # Normalize OCR gender to M/F/O for comparison
                 ocr_g = 'M' if ocr_gender.lower() == 'male' else ('F' if ocr_gender.lower() == 'female' else 'O')
                 if ocr_g != qr_gender:
                     analysis_results["fraud_score"] += 3
                     analysis_results["indicators"].append(f"🔴 HIGH: Gender Mismatch. OCR: '{ocr_gender}', QR: '{qr_gender}'")
 
-            # 4. Aadhaar last 4
+            # 3. Aadhaar last 4
             cleaned_ocr_aadhaar = re.sub(r'\s+', '', ocr_aadhaar_num)
             if cleaned_ocr_aadhaar and qr_aadhaar_last_4 and cleaned_ocr_aadhaar[-4:] != qr_aadhaar_last_4:
                  analysis_results["fraud_score"] += 3
@@ -454,7 +496,7 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
     else:
         analysis_results["assessment"] = "LOW"
         if not any(ind.startswith("🔴") or ind.startswith("🟡") for ind in analysis_results["indicators"]):
-             analysis_results["indicators"].append("✅ LOW: All checks passed.")
+              analysis_results["indicators"].append("✅ LOW: All checks passed.")
 
     return analysis_results
 
@@ -462,7 +504,7 @@ def perform_analysis(image_pil, do_qr_check, custom_model, general_model):
 # --- 8. STREAMLIT UI ---
 
 st.title("Aadhaar Card Fraud Detection 🔎")
-st.markdown("Upload an image of an Aadhaar card to analyze it for signs of fraud.")
+st.markdown("Upload the front and (optionally) back image of an Aadhaar card to analyze it for signs of fraud.")
 
 # --- Sidebar for Inputs ---
 with st.sidebar:
@@ -471,16 +513,20 @@ with st.sidebar:
     # IMPORTANT: Make sure 'best.pt' is in the same directory as this script
     MODEL_PATH = 'best.pt'
     
-    aadhaar_image = st.file_uploader("Upload Aadhaar Image", type=["jpg", "jpeg", "png"])
+    # Front Image Upload (Required)
+    aadhaar_image_front = st.file_uploader("Upload Aadhaar Front Image (Required)", type=["jpg", "jpeg", "png"])
     
-    qr_toggle = st.toggle("Perform QR Code Verification", value=True, help="Scans the uploaded image for a Secure QR code and cross-references it.")
+    # Back Image Upload (Optional New Feature)
+    aadhaar_image_back = st.file_uploader("Upload Aadhaar Back Image (Optional)", type=["jpg", "jpeg", "png"])
+    
+    qr_toggle = st.toggle("Perform QR Code Verification", value=True, help="Scans the front, and optionally the back, for a Secure QR code and cross-references it with OCR data.")
     
     analyze_button = st.button("Analyze Card", type="primary", use_container_width=True)
 
 # --- Main Area for Results ---
 if analyze_button:
-    if not aadhaar_image:
-        st.error("Please upload an Aadhaar Image to begin analysis.")
+    if not aadhaar_image_front:
+        st.error("Please upload the **Aadhaar Front Image** to begin analysis.")
     else:
         # Load models
         custom_model = load_yolo_model(MODEL_PATH)
@@ -489,11 +535,12 @@ if analyze_button:
         if custom_model is None or general_model is None:
             st.error("Models could not be loaded. Please check the console for errors and ensure 'best.pt' is in the correct folder.")
         else:
-            with st.spinner("🕵 Analyzing image... This may take a moment."):
-                pil_image = Image.open(aadhaar_image)
+            with st.spinner("🕵 Analyzing image(s)... This may take a moment."):
+                pil_image_front = Image.open(aadhaar_image_front)
+                pil_image_back = Image.open(aadhaar_image_back) if aadhaar_image_back else None
                 
                 # Perform the full analysis
-                results = perform_analysis(pil_image, qr_toggle, custom_model, general_model)
+                results = perform_analysis(pil_image_front, pil_image_back, qr_toggle, custom_model, general_model)
             
             st.success("Analysis complete!")
 
@@ -512,11 +559,11 @@ if analyze_button:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.subheader("Annotated Image")
+                    st.subheader("Front Image: Detections")
                     if results["annotated_image"]:
-                        st.image(results["annotated_image"], caption="Detections on Image", use_container_width=True)
+                        st.image(results["annotated_image"], caption="Detected Fields on Front Image", use_container_width=True)
                     else:
-                        st.image(pil_image, caption="Original Image", use_container_width=True)
+                        st.image(pil_image_front, caption="Original Front Image", use_container_width=True)
 
                 with col2:
                     st.subheader("Fraud Indicators")
@@ -536,7 +583,7 @@ if analyze_button:
                 
                 with col3:
                     st.subheader("Extracted Text (OCR)")
-                    st.info("This JSON shows the *cleaned* data after extraction.")
+                    st.info("This JSON shows the *cleaned* data extracted from the front image.")
                     if results["ocr_data"]:
                         st.json(results["ocr_data"])
                     else:
@@ -546,23 +593,22 @@ if analyze_button:
                     st.subheader("Decoded QR Data")
                     if not qr_toggle:
                         st.info("QR check was disabled.")
-                    elif "error" in results["qr_data"]:
-                        st.error(results["qr_data"]["error"])
-                    elif results["qr_data"]:
+                    elif results["qr_data"] and "error" not in results["qr_data"]:
+                        source = "Back Image" if results.get("back_image_qr_data") else "Front Image"
+                        st.success(f"QR Code decoded successfully from **{source}**.")
                         st.json(results["qr_data"])
                     else:
-                        st.info("QR check was not performed or no data was found.")
+                        st.error(f"QR check failed. Check indicators for details.")
+                        st.json(results.get("qr_data", {"message": "No QR data found or decode failed."}))
+
 
 # Instructions (Simplified)
 st.info(
     "**How this works:**\n"
-    "This tool performs a deep analysis of the Aadhaar card image through a 7-step process:\n"
-    "* **1. Image Preparation:** The image is enhanced to improve text recognition.\n"
-    "* **2. Data Location:** An AI model finds and draws boxes around key fields (Name, DOB, Aadhaar Number).\n"
-    "* **3. Text Reading (OCR):** Software extracts the text from these fields.\n"
-    "* **4. Error Correction:** Common scanning and reading errors in the text, especially in dates, are automatically fixed.\n"
-    "* **5. Data Validation:** The extracted Name, DOB, and Gender are checked for correct format and logical consistency.\n"
-    "* **6. Checksum Verification:** The 12-digit Aadhaar number is verified using the official Verhoeff algorithm to detect tampering.\n"
-    "* **7. QR Code Cross-Check (Optional):** If enabled, the card's Secure QR code is decoded, and its data is compared against the text read from the front of the card.",
+    "This tool performs a deep analysis of the Aadhaar card image(s) through a multi-step process:\n"
+    "* **1. Data Location & OCR:** AI finds and extracts text fields (Name, DOB, Aadhaar Number) from the **front** image.\n"
+    "* **2. Core Validation:** The extracted data is checked for format, logical consistency (e.g., valid date), and the Aadhaar number is verified using the **Verhoeff checksum** to detect tampering.\n"
+    "* **3. Face Check:** A general model ensures a face is present, preventing analysis of purely text-based fakes.\n"
+    "* **4. QR Code Cross-Check (Optional):** If enabled, the tool scans for the Secure QR code on the **front**, and if it fails, it checks the **back** image. The decoded data (which includes Name, DOB, Gender, and the last 4 digits of the Aadhaar number) is then cross-referenced against the text read from the front. A mismatch suggests digital tampering with the card's visual data.",
     icon="ℹ️"
 )

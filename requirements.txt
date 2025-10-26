@@ -7,3 +7,5 @@ numpy
 matplotlib
 pyaadhaar
 protobuf
+pyzbar
+torch
