@@ -1,7 +1,8 @@
 {
   "name": "Python 3",
-  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
   "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  
+  // Customizations for VS Code/Codespaces
   "customizations": {
     "codespaces": {
       "openFiles": [
@@ -17,10 +18,16 @@
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
+
+  // This command handles both system (apt) packages from packages.txt and Python (pip) requirements.
+  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; [ -f packages.txt ] && pip3 install --user -r packages.txt; pip3 install --user streamlit; echo '✅ Packages installed and Requirements met'",
+  
+  // Command to run the Streamlit app after the container is attached
   "postAttachCommand": {
     "server": "streamlit run app.py --server.enableCORS false --server.enableXsrfProtection false"
   },
+  
+  // Port configuration for Streamlit
   "portsAttributes": {
     "8501": {
       "label": "Application",
