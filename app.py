@@ -507,7 +507,7 @@ with st.sidebar:
     # Back Image Upload (Optional New Feature)
     aadhaar_image_back = st.file_uploader("Upload Aadhaar Back Image (Optional)", type=["jpg", "jpeg", "png"])
     
-    qr_toggle = st.toggle("Perform QR Code Verification", value=True, help="Scans the front, and optionally the back, for a Secure QR code and cross-references it with OCR data.")
+    qr_toggle = st.toggle("Perform QR Code Verification", value=False, help="Scans the front, and optionally the back, for a Secure QR code and cross-references it with OCR data.")
     
     analyze_button = st.button("Analyze Card", type="primary", use_container_width=True)
 
