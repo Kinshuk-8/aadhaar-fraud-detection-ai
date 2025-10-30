@@ -29,19 +29,15 @@ elif platform.system() in ["Linux", "Darwin"]:
     # Streamlit Cloud / Linux default path, relies on packages.txt for installation
     if os.path.exists("/usr/bin/tesseract"):
         pytesseract.pytesseract.tesseract_cmd = "/usr/bin/tesseract"
-    # The 'else' block containing the st.warning() has been REMOVED here, as requested.
 
 
 # --- Global Device Setup (For YOLO) ---
 def get_device():
     """Checks for available hardware accelerator."""
     if torch.cuda.is_available():
-        # print("Using CUDA (NVIDIA GPU)") # Commented out print statements for cleaner Streamlit deployment
         return 'cuda'
     if torch.backends.mps.is_available():
-        # print("Using MPS (Apple Silicon GPU)")
         return 'mps'
-    # print("Using CPU")
     return 'cpu'
 
 DEVICE = get_device()
@@ -49,7 +45,6 @@ DEVICE = get_device()
 # --- 1. MODEL LOADING (Cached) ---
 @st.cache_resource
 def load_yolo_model(model_path):
-    # print(f"Loading custom model from {model_path}...")
     if not os.path.exists(model_path):
         st.error(f"Custom model not found at path: {model_path}. Make sure 'best.pt' is uploaded.")
         return None
@@ -58,19 +53,16 @@ def load_yolo_model(model_path):
         # print("Custom model loaded successfully.")
         return model
     except Exception as e:
-        # print(f"Error loading custom model: {e}")
         st.error(f"Error loading custom model: {e}")
         return None
 
 @st.cache_resource
 def load_general_model():
-    # print("Loading general model (yolov8n.pt)...")
     try:
         model = YOLO("yolov8n.pt")
         # print("General model loaded successfully.")
         return model
     except Exception as e:
-        # print(f"Error loading general model: {e}")
         st.error(f"Error loading general model: {e}")
         return None
 
