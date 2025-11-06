@@ -1,0 +1,901 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background: #f7f9fc;
+    color: #222;
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+/* Header Styles */
+header {
+    background: #fff;
+    padding: 18px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e8ecef;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo {
+    font-weight: 700;
+    font-size: 1.9em;
+    color: #d40000;
+    letter-spacing: -0.5px;
+}
+
+nav a {
+    margin: 0 20px;
+    text-decoration: none;
+    color: #4a5568;
+    font-weight: 500;
+    font-size: 1.1em;
+    transition: all 0.3s ease;
+    padding: 8px 0;
+    position: relative;
+}
+
+nav a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 0;
+    background-color: #d40000;
+    transition: width 0.3s ease;
+}
+
+nav a.active, nav a:hover {
+    color: #d40000;
+}
+
+nav a.active::after, nav a:hover::after {
+    width: 100%;
+}
+
+/* Main Content Styles */
+.main-content {
+    padding: 50px 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.services-intro {
+    text-align: center;
+    margin-bottom: 60px;
+    padding: 0 20px;
+}
+
+.services-intro h2 {
+    font-size: 2.6em;
+    margin-bottom: 25px;
+    color: #d40000;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.services-intro p {
+    font-size: 1.2em;
+    color: #5a6778;
+    max-width: 800px;
+    margin: 0 auto;
+    line-height: 1.7;
+}
+
+/* Service Cards */
+.service-cards {
+    display: flex;
+    justify-content: center;
+    gap: 35px;
+    margin-bottom: 60px;
+    flex-wrap: wrap;
+}
+
+.service-card {
+    background: white;
+    padding: 45px 35px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.07);
+    text-align: center;
+    width: 360px;
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+    position: relative;
+    overflow: hidden;
+}
+
+.service-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #d40000, #ff0000);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.service-card:hover::before {
+    transform: scaleX(1);
+}
+
+.service-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    border-color: #ffe6e6;
+}
+
+.service-icon {
+    font-size: 3.8em;
+    margin-bottom: 25px;
+    display: block;
+}
+
+.service-card h3 {
+    color: #2d3748;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.service-card p {
+    color: #718096;
+    margin-bottom: 30px;
+    font-size: 1.1em;
+    line-height: 1.65;
+}
+
+/* Button Styles */
+.btn {
+    display: inline-block;
+    padding: 14px 32px;
+    background: #d40000;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1em;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 5px rgba(212, 0, 0, 0.2);
+}
+
+.btn:hover {
+    background: #b30000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(212, 0, 0, 0.3);
+}
+
+.btn.active {
+    background: #990000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(212, 0, 0, 0.3);
+}
+
+/* Upload Section */
+.upload-section {
+    background: white;
+    padding: 45px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.07);
+    margin-bottom: 45px;
+    border: 1px solid #f0f0f0;
+}
+
+.upload-section h3 {
+    color: #2d3748;
+    margin-bottom: 18px;
+    font-size: 1.8em;
+    font-weight: 600;
+}
+
+.upload-section > p {
+    color: #5a6778;
+    font-size: 1.1em;
+    margin-bottom: 35px;
+    line-height: 1.7;
+}
+
+.service-buttons {
+    margin: 35px 0;
+    text-align: center;
+}
+
+.service-buttons button {
+    margin: 0 15px;
+    padding: 16px 38px;
+    border: none;
+    background: #d40000;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1em;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 5px rgba(212, 0, 0, 0.2);
+}
+
+.service-buttons button:hover {
+    background: #b30000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(212, 0, 0, 0.3);
+}
+
+.service-buttons button.active {
+    background: #990000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(212, 0, 0, 0.3);
+}
+
+/* Form Styles */
+form {
+    margin-top: 35px;
+}
+
+.form-group {
+    margin-bottom: 28px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 1.1em;
+}
+
+.form-group input[type="file"] {
+    width: 100%;
+    padding: 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f9f9f9;
+    transition: all 0.3s ease;
+    font-size: 1em;
+}
+
+.form-group input[type="file"]:focus {
+    border-color: #d40000;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 0, 0, 0.1);
+    background: white;
+}
+
+.form-group input[type="checkbox"] {
+    margin-right: 12px;
+    transform: scale(1.3);
+}
+
+#qrCheckboxContainer label {
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 1.1em;
+    color: #4a5568;
+}
+
+.note {
+    font-size: 0.95em;
+    color: #718096;
+    margin-top: 10px;
+    line-height: 1.5;
+    font-style: normal;
+}
+
+/* Upload Containers */
+#singleUpload, #batchUpload {
+    margin: 30px 0;
+    padding: 25px;
+    background: #f9fafb;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Result Container */
+.result-container {
+    background: white;
+    padding: 35px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.07);
+    min-height: 160px;
+    margin-top: 25px;
+    border: 1px solid #f0f0f0;
+}
+
+#defaultResultMessage {
+    color: #718096;
+    text-align: center;
+    font-size: 1.1em;
+    line-height: 1.7;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+}
+
+.modal-content-wrapper {
+    background-color: white;
+    margin: 5% auto;
+    padding: 35px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    position: relative;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    border: 1px solid #f0f0f0;
+}
+
+.close-btn {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 30px;
+    font-weight: 300;
+    cursor: pointer;
+    color: #a0aec0;
+    transition: color 0.3s ease;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    color: #4a5568;
+}
+
+/* Loader */
+.loader {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #d40000;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 30px auto;
+    display: none;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Footer */
+footer {
+    background: #fff;
+    text-align: center;
+    padding: 30px;
+    border-top: 1px solid #e8ecef;
+    margin-top: 60px;
+    color: #718096;
+}
+
+footer p {
+    font-size: 1.1em;
+}
+
+/* Homepage Styles */
+.hero {
+    text-align: center;
+    padding: 80px 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.hero h2 {
+    font-size: 3em;
+    margin-bottom: 25px;
+    color: #2d3748;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.hero p {
+    font-size: 1.3em;
+    color: #5a6778;
+    margin-bottom: 40px;
+    line-height: 1.7;
+}
+
+.features {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 60px;
+    flex-wrap: wrap;
+}
+
+.features div {
+    text-align: center;
+    max-width: 280px;
+    padding: 30px;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    border: 1px solid #f0f0f0;
+    transition: transform 0.3s ease;
+}
+
+.features div:hover {
+    transform: translateY(-5px);
+}
+
+.features h3 {
+    color: #2d3748;
+    margin-bottom: 15px;
+    font-size: 1.4em;
+    font-weight: 600;
+}
+
+.features p {
+    color: #718096;
+    line-height: 1.6;
+}
+
+/* About Page Styles */
+.about {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 60px 30px;
+}
+
+.about h2 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    color: #2d3748;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: -0.5px;
+}
+
+.about-intro {
+    font-size: 1.3em;
+    color: #5a6778;
+    margin-bottom: 60px;
+    line-height: 1.7;
+    text-align: center;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* About Cards Grid */
+.about-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 30px;
+    margin-bottom: 60px;
+}
+
+.about-card {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.07);
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 1px solid #f0f0f0;
+    position: relative;
+    overflow: hidden;
+}
+
+.about-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #d40000, #ff0000);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.about-card:hover::before {
+    transform: scaleX(1);
+}
+
+.about-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    border-color: #ffe6e6;
+}
+
+.card-icon {
+    font-size: 3.5em;
+    margin-bottom: 25px;
+    display: block;
+}
+
+.about-card h3 {
+    color: #2d3748;
+    margin-bottom: 20px;
+    font-size: 1.4em;
+    font-weight: 600;
+}
+
+.about-card p {
+    color: #718096;
+    line-height: 1.65;
+    font-size: 1.05em;
+}
+
+/* Mission Section */
+.about-mission {
+    background: white;
+    padding: 50px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.07);
+    text-align: center;
+    border: 1px solid #f0f0f0;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.about-mission h3 {
+    color: #2d3748;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+    font-weight: 600;
+}
+
+.about-mission p {
+    color: #5a6778;
+    font-size: 1.2em;
+    line-height: 1.7;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Responsive Design for About Section */
+@media (max-width: 768px) {
+    .about {
+        padding: 40px 20px;
+    }
+    
+    .about h2 {
+        font-size: 2.2em;
+    }
+    
+    .about-intro {
+        font-size: 1.2em;
+        margin-bottom: 40px;
+    }
+    
+    .about-cards {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    .about-card {
+        padding: 30px 25px;
+    }
+    
+    .card-icon {
+        font-size: 3em;
+        margin-bottom: 20px;
+    }
+    
+    .about-mission {
+        padding: 35px 25px;
+    }
+    
+    .about-mission h3 {
+        font-size: 1.6em;
+    }
+    
+    .about-mission p {
+        font-size: 1.1em;
+    }
+}
+
+@media (max-width: 480px) {
+    .about-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .about-card {
+        padding: 25px 20px;
+    }
+    
+    .about-mission {
+        padding: 30px 20px;
+    }
+}
+
+/* Contact Page Styles */
+.contact {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 60px 30px;
+    text-align: center;
+}
+
+.contact h2 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    color: #2d3748;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+.contact > p {
+    font-size: 1.2em;
+    color: #5a6778;
+    margin-bottom: 40px;
+    line-height: 1.7;
+}
+
+#contactForm {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+#contactForm input,
+#contactForm textarea {
+    padding: 16px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1.1em;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+#contactForm input:focus,
+#contactForm textarea:focus {
+    border-color: #d40000;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(212, 0, 0, 0.1);
+}
+
+#contactForm textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+
+#contactForm button {
+    padding: 16px;
+    background: #d40000;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 5px rgba(212, 0, 0, 0.2);
+}
+
+#contactForm button:hover {
+    background: #b30000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(212, 0, 0, 0.3);
+}
+
+#formResponse {
+    margin-top: 25px;
+    padding: 15px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        padding: 18px 25px;
+    }
+    
+    nav {
+        margin-top: 18px;
+    }
+    
+    nav a {
+        margin: 0 12px;
+        font-size: 1em;
+    }
+    
+    .service-cards {
+        flex-direction: column;
+        align-items: center;
+        gap: 25px;
+    }
+    
+    .service-card {
+        width: 100%;
+        max-width: 400px;
+        padding: 35px 25px;
+    }
+    
+    .service-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+    
+    .service-buttons button {
+        margin: 0;
+    }
+    
+    .upload-section {
+        padding: 30px;
+    }
+    
+    .modal-content-wrapper {
+        width: 95%;
+        margin: 10% auto;
+        padding: 30px;
+    }
+    
+    .hero h2 {
+        font-size: 2.3em;
+    }
+    
+    .hero p {
+        font-size: 1.2em;
+    }
+    
+    .features {
+        gap: 25px;
+    }
+    
+    .features div {
+        padding: 25px 20px;
+    }
+}
+
+/* Additional utility classes */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-20 {
+    margin-top: 20px;
+}
+
+.mb-20 {
+    margin-bottom: 20px;
+}
+/* Download Button Styles */
+.download-options {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1em;
+    font-weight: 500;
+}
+
+.download-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.download-btn.json {
+    background: #d40000;
+}
+
+.download-btn.json:hover {
+    background: #b30000;
+    box-shadow: 0 4px 12px rgba(212, 0, 0, 0.3);
+}
+
+.download-btn.csv {
+    background: #0078d4;
+}
+
+.download-btn.csv:hover {
+    background: #006abc;
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
+}
+
+/* Risk level indicators */
+.risk-low {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.risk-medium {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.risk-high {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.risk-tag {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.risk-low-tag {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.risk-medium-tag {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.risk-high-tag {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 600;
+}
+
+.status-valid {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.status-invalid {
+    background: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+.status-warning {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}

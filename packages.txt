@@ -1,4 +1,0 @@
-libzbar0
-tesseract-ocr
-libgl1
-tesseract-ocr
