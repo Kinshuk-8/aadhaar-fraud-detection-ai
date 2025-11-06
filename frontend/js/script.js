@@ -1,5 +1,8 @@
-const API_BASE_URL = "http://localhost:5000";
-let currentMode = "single";
+// Dynamic API base URL that works in both development and production
+const API_BASE_URL = window.location.origin;
+
+// Fallback for development
+// const API_BASE_URL = "http://localhost:5000"; // Only for local developmentlet currentMode = "single";
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("DOM loaded - initializing...");
