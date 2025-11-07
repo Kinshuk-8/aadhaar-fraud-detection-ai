@@ -4,40 +4,22 @@ import traceback
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-# Add backend to Python path - Render specific path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_path = os.path.join(current_dir, 'backend')
-sys.path.append(backend_path)
+# Add backend to Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 
 app = Flask(__name__)
 CORS(app)
 
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-# Frontend paths - Render specific
-FRONTEND_PATH = os.path.join(current_dir, 'frontend')
-
-print("🚀 Starting Aadhaar Verification API on Render")
-print(f"📁 Current directory: {current_dir}")
-print(f"📁 Python path: {sys.path}")
+# Frontend paths
+FRONTEND_PATH = os.path.join(os.path.dirname(__file__), 'frontend')
 
 # Import backend modules with proper error handling
 try:
-    from utils.processor import process_single_image_bytes, process_zip_bytes
+    from backend.utils.processor import process_single_image_bytes, process_zip_bytes
     BACKEND_IMPORTS_WORKING = True
     print("✅ Successfully imported backend modules")
-    
-    # Check if model file exists
-    model_path = os.path.join(current_dir, "backend", "models", "yolov8n.pt")
-    if os.path.exists(model_path):
-        print(f"✅ YOLO model found: {model_path}")
-    else:
-        print(f"❌ YOLO model not found at: {model_path}")
-        # List available files for debugging
-        models_dir = os.path.join(current_dir, "backend", "models")
-        if os.path.exists(models_dir):
-            print(f"📁 Models directory contents: {os.listdir(models_dir)}")
-        
 except ImportError as e:
     print(f"❌ Import Error: {e}")
     print(f"❌ Traceback: {traceback.format_exc()}")
@@ -86,9 +68,8 @@ def health_check():
     return jsonify({
         "status": "running" if BACKEND_IMPORTS_WORKING else "degraded",
         "backend_imports": BACKEND_IMPORTS_WORKING,
-        "model_exists": os.path.exists("backend/models/yolov8n.pt"),
-        "platform": "Render",
-        "current_directory": current_dir
+        "model_exists": os.path.exists("backend/models/best.pt"),
+        "service": "AadhaarVerify API"
     })
 
 @app.route("/api/verify_single", methods=["POST"])
@@ -111,15 +92,12 @@ def api_verify_single():
 
         front_bytes = front.read()
         
-        print(f"✅ Processing single image: {front.filename}")
-        
-        # Use absolute path for model
-        model_path = os.path.join(current_dir, "backend", "models", "yolov8n.pt")
+        print("✅ Processing single image...")
         result = process_single_image_bytes(
             front_bytes,
             back_bytes=None,
             do_qr_check=False,
-            model_path=model_path,
+            model_path="backend/models/best.pt",
             device="cpu"
         )
 
@@ -127,11 +105,12 @@ def api_verify_single():
 
     except Exception as e:
         print(f"❌ Error in verify_single: {str(e)}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @app.route("/api/verify_batch", methods=["POST"])
 def api_verify_batch():
-    """Batch Aadhaar card verification endpoint"""
+    """Batch Aadhaar card verification endpoint with progress tracking"""
     try:
         if not BACKEND_IMPORTS_WORKING:
             return jsonify({
@@ -147,13 +126,18 @@ def api_verify_batch():
         zip_bytes = zip_file.read()
         print("✅ Processing batch images...")
         
-        # Use absolute path for model
-        model_path = os.path.join(current_dir, "backend", "models", "yolov8n.pt")
+        # Optional: Limit files for very large batches to prevent timeout
+        max_files = request.form.get("max_files")
+        if max_files:
+            max_files = int(max_files)
+            print(f"🔧 Processing limit set to {max_files} files")
+        
         results = process_zip_bytes(
             zip_bytes,
-            model_path=model_path, 
+            model_path="backend/models/best.pt", 
             do_qr_check=False,
-            device="cpu"
+            device="cpu",
+            max_files=max_files  # Pass the optional limit
         )
 
         # Generate batch summary
@@ -164,9 +148,10 @@ def api_verify_batch():
         
         summary = {
             "total_files_processed": total_files,
-            "valid_aadhaar_cards": valid_aadhaar - non_aadhaar,
+            "valid_aadhaar_cards": valid_aadhaar - non_aadhaar,  # Exclude non-Aadhaar files
             "non_aadhaar_files": non_aadhaar,
             "processing_errors": errors,
+            "success_rate": f"{((valid_aadhaar - non_aadhaar) / total_files * 100):.1f}%" if total_files > 0 else "0%"
         }
 
         return jsonify({
@@ -179,23 +164,21 @@ def api_verify_batch():
     except Exception as e:
         print(f"❌ Error in verify_batch: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-
-@app.route("/api/test")
-def test_endpoint():
-    return jsonify({
-        "message": "AadhaarVerify API is running on Render",
-        "status": "operational",
-        "backend_loaded": BACKEND_IMPORTS_WORKING
-    })
-
+        
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 5000))
     print(f"🚀 Starting AadhaarVerify on port {port}")
+    print(f"📁 Current directory: {os.getcwd()}")
     print(f"📁 Backend imports working: {BACKEND_IMPORTS_WORKING}")
     
-    # Debug file structure
+    # List files for debugging
     print("📁 Root directory contents:")
-    for item in os.listdir(current_dir):
+    for item in os.listdir('.'):
         print(f"   - {item}")
+    
+    if os.path.exists('backend'):
+        print("📁 Backend directory contents:")
+        for item in os.listdir('backend'):
+            print(f"   - {item}")
     
     app.run(host="0.0.0.0", port=port, debug=False)
