@@ -4,13 +4,27 @@ services:
     env: python
     plan: free
     region: oregon
-    buildCommand: |-
+
+    buildCommand: |
+      echo "🚀 Starting Render build..."
+      apt-get update && apt-get install -y tesseract-ocr libzbar0 libgl1-mesa-glx
+      pip install --upgrade pip
       pip install -r requirements.txt
-      # Copy YOLO model to backend directory
-      cp yolov8n.pt backend/models/
+      mkdir -p backend/models backend/uploads /tmp/uploads
+      if [ -f "yolov8n.pt" ]; then
+          echo "✅ Copying yolov8n.pt to backend/models/"
+          cp yolov8n.pt backend/models/
+      fi
+      echo "✅ Build completed successfully."
+
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+
     envVars:
       - key: PYTHONPATH
         value: /opt/render/project/src
       - key: MODEL_PATH
-        value: /opt/render/project/src/backend/models/yolov8n.pt
+        value: /opt/render/project/src/backend/models/best.pt
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: TESSDATA_PREFIX
+        value: /usr/share/tesseract-ocr/4.00/tessdata/

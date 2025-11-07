@@ -6,7 +6,14 @@ import datetime
 import json
 import cv2
 import numpy as np
+import tempfile
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+# --- Environment-aware paths for Render & local ---
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join("backend", "models", "best.pt"))
+UPLOAD_DIR = os.environ.get("UPLOAD_DIR", os.path.join("backend", "uploads"))
+
+# Ensure upload directory exists
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Import with error handling
 try:
@@ -282,10 +289,13 @@ def process_single_image_bytes(front_bytes, back_bytes=None, do_qr_check=False, 
     try:
         if model_path and os.path.exists(model_path):
             custom_model = YOLO(model_path)
+            custom_model.to("cpu")
         else:
-            custom_model = YOLO("yolov8n.pt")  # Fallback
+            custom_model = YOLO("yolov8n.pt")
+            custom_model.to("cpu")  # Fallback
         
-        general_model = YOLO("yolov8n.pt")  # For face detection
+        general_model = YOLO("yolov8n.pt")
+        general_model.to("cpu")  # For face detection
         
         custom_model.to(device)
         general_model.to(device)

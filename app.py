@@ -97,7 +97,7 @@ def api_verify_single():
             front_bytes,
             back_bytes=None,
             do_qr_check=False,
-            model_path="backend/models/best.pt",
+            model_path=os.environ.get("MODEL_PATH", "backend/models/best.pt"),
             device="cpu"
         )
 
@@ -134,7 +134,7 @@ def api_verify_batch():
         
         results = process_zip_bytes(
             zip_bytes,
-            model_path="backend/models/best.pt", 
+            model_path=os.environ.get("MODEL_PATH", "backend/models/best.pt"), 
             do_qr_check=False,
             device="cpu",
             max_files=max_files  # Pass the optional limit
