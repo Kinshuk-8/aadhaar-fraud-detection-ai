@@ -1,9 +1,13 @@
+# Byte-compiled / cache files
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Virtual environment & logs
 .Python
 env/
+venv/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox
@@ -14,15 +18,26 @@ nosetests.xml
 coverage.xml
 *.cover
 *.log
+
+# Git & editor history
 .git
 .mypy_cache/
 .pytest_cache/
 .history
 .DS_Store
+
+# Local project artifacts
 Internship_artifacts/
+
+# Cache folders
 backend/__pycache__/
 backend/utils/__pycache__/
+
+# Uploads directory (dynamic during runtime)
 backend/uploads/*
-!backend/models/
-*.pt
+
+# --- Model Files ---
+# ❌ Don't exclude all *.pt — keep model files
+# Remove `*.pt` line completely, or allow models explicitly:
+!backend/models/*.pt
 !yolov8n.pt
