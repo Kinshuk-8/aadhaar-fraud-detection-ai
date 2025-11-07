@@ -1,51 +1,58 @@
 import os
-import io
-import base64
-import zipfile
-import json
-import datetime
+import sys
+import traceback
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 
-try:
-    from backend.utils.processor import process_single_image_bytes, process_zip_bytes
-except ImportError as e:
-    print(f"Import error: {e}")
-
-# -------------------- CONFIG --------------------
-ROOT = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.join(ROOT, "uploads")
-MODEL_PATH = os.path.join(ROOT, "backend", "models", "best.pt")
-FRONTEND_PATH = os.path.join(ROOT, "frontend")
-
-# Create required directories
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+# Add backend to Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 
 app = Flask(__name__)
 CORS(app)
 
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-# -------------------- FRONTEND ROUTES --------------------
+# Frontend paths
+FRONTEND_PATH = os.path.join(os.path.dirname(__file__), 'frontend')
+
+# Import backend modules with proper error handling
+try:
+    from backend.utils.processor import process_single_image_bytes, process_zip_bytes
+    BACKEND_IMPORTS_WORKING = True
+    print("✅ Successfully imported backend modules")
+except ImportError as e:
+    print(f"❌ Import Error: {e}")
+    print(f"❌ Traceback: {traceback.format_exc()}")
+    BACKEND_IMPORTS_WORKING = False
+    
+    # Create fallback functions
+    def process_single_image_bytes(*args, **kwargs):
+        return {
+            "error": "Backend modules not loaded", 
+            "message": "Processor module import failed",
+            "assessment": "ERROR"
+        }
+    
+    def process_zip_bytes(*args, **kwargs):
+        return [{
+            "error": "Backend modules not loaded", 
+            "message": "Processor module import failed",
+            "assessment": "ERROR"
+        }]
+
+# Frontend Routes
 @app.route("/")
 def serve_index():
     return send_from_directory(FRONTEND_PATH, "index.html")
 
 @app.route("/<path:page>")
 def serve_pages(page):
-    # Serve HTML pages
     if page in ["services", "about", "contact"]:
         return send_from_directory(FRONTEND_PATH, f"{page}.html")
-    
-    # Try to serve static files
-    full_path = os.path.join(FRONTEND_PATH, page)
-    if os.path.exists(full_path):
+    try:
         return send_from_directory(FRONTEND_PATH, page)
-    
-    # Fallback to index.html for client-side routing
-    return send_from_directory(FRONTEND_PATH, "index.html")
+    except:
+        return send_from_directory(FRONTEND_PATH, "index.html")
 
 @app.route("/css/<path:filename>")
 def serve_css(filename):
@@ -55,107 +62,98 @@ def serve_css(filename):
 def serve_js(filename):
     return send_from_directory(os.path.join(FRONTEND_PATH, "js"), filename)
 
-# -------------------- API ROUTES --------------------
+# API Routes
+@app.route("/api/health")
+def health_check():
+    return jsonify({
+        "status": "running" if BACKEND_IMPORTS_WORKING else "degraded",
+        "backend_imports": BACKEND_IMPORTS_WORKING,
+        "model_exists": os.path.exists("backend/models/best.pt"),
+        "service": "AadhaarVerify API"
+    })
+
 @app.route("/api/verify_single", methods=["POST"])
 def api_verify_single():
     """Single Aadhaar card verification endpoint"""
     try:
+        if not BACKEND_IMPORTS_WORKING:
+            return jsonify({
+                "success": False,
+                "error": "Backend modules not loaded",
+                "message": "Processor functions are not available"
+            }), 503
+
         if 'front' not in request.files:
             return jsonify({"error": "Front image is required"}), 400
 
         front = request.files['front']
-        back = request.files.get("back")
-        qr = request.form.get("qr", "true").lower() == "true"
-
         if front.filename == '':
             return jsonify({"error": "No front image selected"}), 400
 
         front_bytes = front.read()
-        back_bytes = back.read() if back and back.filename != '' else None
-
-        # Process the image
+        
+        print("✅ Processing single image...")
         result = process_single_image_bytes(
             front_bytes,
-            back_bytes,
-            do_qr_check=qr,
-            model_path=MODEL_PATH,
+            back_bytes=None,
+            do_qr_check=False,
+            model_path="backend/models/best.pt",
             device="cpu"
         )
-
-        # Handle non-Aadhaar case
-        if result.get("error") == "NOT_AADHAAR":
-            return jsonify({
-                "success": False,
-                "error": "NOT_AADHAAR",
-                "message": result.get("message"),
-                "confidence_score": result.get("confidence_score"),
-                "aadhaar_verification_details": result.get("aadhaar_verification_details")
-            })
-
-        # Encode annotated image for frontend display
-        if result.get("annotated_img_bytes"):
-            result["annotated_b64"] = base64.b64encode(
-                result["annotated_img_bytes"]
-            ).decode("utf-8")
-            del result["annotated_img_bytes"]
 
         return jsonify({"success": True, "result": result})
 
     except Exception as e:
+        print(f"❌ Error in verify_single: {str(e)}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @app.route("/api/verify_batch", methods=["POST"])
 def api_verify_batch():
     """Batch Aadhaar card verification endpoint"""
     try:
+        if not BACKEND_IMPORTS_WORKING:
+            return jsonify({
+                "success": False,
+                "error": "Backend modules not loaded",
+                "message": "Processor functions are not available"
+            }), 503
+
         zip_file = request.files.get("zip")
-        
         if not zip_file or zip_file.filename == '':
-            return jsonify({"error": "ZIP file is required for batch processing"}), 400
+            return jsonify({"error": "ZIP file is required"}), 400
 
         zip_bytes = zip_file.read()
+        print("✅ Processing batch images...")
+        
         results = process_zip_bytes(
             zip_bytes,
-            model_path=MODEL_PATH,
+            model_path="backend/models/best.pt",
             do_qr_check=False,
             device="cpu"
         )
 
-        # Encode annotated images
-        for result in results:
-            if result.get("annotated_img_bytes"):
-                result["annotated_b64"] = base64.b64encode(
-                    result["annotated_img_bytes"]
-                ).decode("utf-8")
-                del result["annotated_img_bytes"]
-
         return jsonify({"success": True, "results": results})
 
     except Exception as e:
+        print(f"❌ Error in verify_batch: {str(e)}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-
-@app.route("/api/health", methods=["GET"])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "healthy",
-        "model_exists": os.path.exists(MODEL_PATH),
-        "frontend_exists": os.path.exists(FRONTEND_PATH)
-    })
-
-# Error handlers
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({"error": "Endpoint not found"}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({"error": "Internal server error"}), 500
-
-@app.errorhandler(413)
-def too_large(error):
-    return jsonify({"error": "File too large"}), 413
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    print(f"🚀 Starting AadhaarVerify on port {port}")
+    print(f"📁 Current directory: {os.getcwd()}")
+    print(f"📁 Backend imports working: {BACKEND_IMPORTS_WORKING}")
+    
+    # List files for debugging
+    print("📁 Root directory contents:")
+    for item in os.listdir('.'):
+        print(f"   - {item}")
+    
+    if os.path.exists('backend'):
+        print("📁 Backend directory contents:")
+        for item in os.listdir('backend'):
+            print(f"   - {item}")
+    
     app.run(host="0.0.0.0", port=port, debug=False)
