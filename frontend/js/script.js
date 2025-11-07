@@ -446,48 +446,125 @@ function collapseSingleDetails(result) {
     verificationResults.scrollIntoView({ behavior: 'smooth' });
 }
 
-function displayBatchResults(results) {
+function displayBatchResults(data) {
     const verificationResults = document.getElementById("verificationResults");
     if (!verificationResults) return;
 
-    if (!results || results.length === 0) {
+    const results = data.results || [];
+    const summary = data.summary || {};
+
+    if (results.length === 0) {
         verificationResults.innerHTML = `
             <div class="result-card error">
                 <h4>❌ No Results</h4>
-                <p>No valid results returned from batch processing.</p>
+                <p>No files were processed from the ZIP file.</p>
             </div>
         `;
         return;
     }
 
-    const validResults = results.filter(r => !r.error || r.error !== 'NOT_AADHAAR');
+    const validResults = results.filter(r => !r.error || r.error === 'NOT_AADHAAR');
     const invalidResults = results.filter(r => r.error === 'NOT_AADHAAR');
     const errorResults = results.filter(r => r.error && r.error !== 'NOT_AADHAAR');
 
-    // Basic summary view only
     let resultHTML = `
         <div class="result-card info">
-            <h4>📊 Batch Processing Summary</h4>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
-                <div style="text-align: center; padding: 15px; background: #e8f5e8; border-radius: 6px;">
-                    <div style="font-size: 24px; font-weight: bold; color: #28a745;">${validResults.length}</div>
-                    <div>Valid Aadhaar</div>
+            <h4>📊 Batch Processing Complete</h4>
+            
+            <!-- Summary Statistics -->
+            <div style="margin-bottom: 20px;">
+                <h5>Summary</h5>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px;">
+                    <div style="text-align: center; padding: 12px; background: #e8f5e8; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #28a745;">${summary.total_files_processed || results.length}</div>
+                        <div style="font-size: 12px;">Total Files</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: #e8f5e8; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #28a745;">${summary.valid_aadhaar_cards || validResults.length - invalidResults.length}</div>
+                        <div style="font-size: 12px;">Valid Aadhaar</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: #fff3cd; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #ffc107;">${summary.non_aadhaar_files || invalidResults.length}</div>
+                        <div style="font-size: 12px;">Non-Aadhaar</div>
+                    </div>
+                    <div style="text-align: center; padding: 12px; background: #f8d7da; border-radius: 6px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #dc3545;">${summary.processing_errors || errorResults.length}</div>
+                        <div style="font-size: 12px;">Errors</div>
+                    </div>
                 </div>
-                <div style="text-align: center; padding: 15px; background: #fff3cd; border-radius: 6px;">
-                    <div style="font-size: 24px; font-weight: bold; color: #ffc107;">${invalidResults.length}</div>
-                    <div>Non-Aadhaar</div>
-                </div>
-                <div style="text-align: center; padding: 15px; background: #f8d7da; border-radius: 6px;">
-                    <div style="font-size: 24px; font-weight: bold; color: #dc3545;">${errorResults.length}</div>
-                    <div>Errors</div>
-                </div>
+                ${summary.success_rate ? `<p style="text-align: center; margin-top: 10px;"><strong>Success Rate:</strong> ${summary.success_rate}</p>` : ''}
             </div>
             
-            <div style="margin-top: 20px; text-align: center;">
+            <!-- Quick File List -->
+            <div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+                <h5>File Results</h5>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #dee2e6;">Filename</th>
+                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #dee2e6;">Status</th>
+                            <th style="padding: 8px; text-align: left; border-bottom: 1px solid #dee2e6;">Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    // Show first 10 files in the quick view
+    const displayFiles = results.slice(0, 10);
+    displayFiles.forEach((result, index) => {
+        const isNonAadhaar = result.error === 'NOT_AADHAAR';
+        const isError = result.error && result.error !== 'NOT_AADHAAR';
+        
+        let status = 'Valid Aadhaar';
+        let statusColor = '#28a745';
+        
+        if (isNonAadhaar) {
+            status = 'Non-Aadhaar';
+            statusColor = '#ffc107';
+        } else if (isError) {
+            status = 'Error';
+            statusColor = '#dc3545';
+        }
+
+        resultHTML += `
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6;">
+                    ${result.filename || `File ${index + 1}`}
+                </td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6; color: ${statusColor};">
+                    ${status}
+                </td>
+                <td style="padding: 8px; border-bottom: 1px solid #dee2e6;">
+                    ${isNonAadhaar || isError ? 'N/A' : (result.assessment || 'UNKNOWN')}
+                </td>
+            </tr>
+        `;
+    });
+
+    // Show message if there are more files
+    if (results.length > 10) {
+        resultHTML += `
+            <tr>
+                <td colspan="3" style="padding: 8px; text-align: center; border-bottom: 1px solid #dee2e6; font-style: italic;">
+                    ... and ${results.length - 10} more files
+                </td>
+            </tr>
+        `;
+    }
+
+    resultHTML += `
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="text-align: center;">
+                <button onclick="downloadBatchResults(${JSON.stringify(results).replace(/"/g, '&quot;')})" 
+                        class="btn" style="background: #28a745; margin-right: 10px;">
+                    📥 Download Full Report
+                </button>
                 <button onclick="showBatchFullDetails(${JSON.stringify(results).replace(/"/g, '&quot;')})" 
-                        class="btn" 
-                        style="background: #0078d4; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
-                    View Full Details
+                        class="btn" style="background: #0078d4;">
+                    View All Details
                 </button>
             </div>
         </div>

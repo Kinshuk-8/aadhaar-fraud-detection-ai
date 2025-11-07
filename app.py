@@ -110,12 +110,12 @@ def api_verify_single():
 
 @app.route("/api/verify_batch", methods=["POST"])
 def api_verify_batch():
-    """Batch Aadhaar card verification endpoint"""
+    """Batch Aadhaar card verification endpoint with progress tracking"""
     try:
         if not BACKEND_IMPORTS_WORKING:
             return jsonify({
                 "success": False,
-                "error": "Backend modules not loaded",
+                "error": "Backend modules not loaded", 
                 "message": "Processor functions are not available"
             }), 503
 
@@ -126,20 +126,45 @@ def api_verify_batch():
         zip_bytes = zip_file.read()
         print("✅ Processing batch images...")
         
+        # Optional: Limit files for very large batches to prevent timeout
+        max_files = request.form.get("max_files")
+        if max_files:
+            max_files = int(max_files)
+            print(f"🔧 Processing limit set to {max_files} files")
+        
         results = process_zip_bytes(
             zip_bytes,
-            model_path="backend/models/best.pt",
+            model_path="backend/models/best.pt", 
             do_qr_check=False,
-            device="cpu"
+            device="cpu",
+            max_files=max_files  # Pass the optional limit
         )
 
-        return jsonify({"success": True, "results": results})
+        # Generate batch summary
+        total_files = len(results)
+        valid_aadhaar = len([r for r in results if not r.get('error') or r.get('error') == 'NOT_AADHAAR'])
+        non_aadhaar = len([r for r in results if r.get('error') == 'NOT_AADHAAR'])
+        errors = len([r for r in results if r.get('error') and r.get('error') != 'NOT_AADHAAR'])
+        
+        summary = {
+            "total_files_processed": total_files,
+            "valid_aadhaar_cards": valid_aadhaar - non_aadhaar,  # Exclude non-Aadhaar files
+            "non_aadhaar_files": non_aadhaar,
+            "processing_errors": errors,
+            "success_rate": f"{((valid_aadhaar - non_aadhaar) / total_files * 100):.1f}%" if total_files > 0 else "0%"
+        }
+
+        return jsonify({
+            "success": True, 
+            "results": results,
+            "summary": summary,
+            "total_files": total_files
+        })
 
     except Exception as e:
         print(f"❌ Error in verify_batch: {str(e)}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-
+        
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     print(f"🚀 Starting AadhaarVerify on port {port}")
