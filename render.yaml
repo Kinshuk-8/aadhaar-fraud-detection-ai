@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: aadhaar-verify
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: |-
+      pip install -r requirements.txt
+      # Copy YOLO model to backend directory
+      cp yolov8n.pt backend/models/
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+      - key: MODEL_PATH
+        value: /opt/render/project/src/backend/models/yolov8n.pt
