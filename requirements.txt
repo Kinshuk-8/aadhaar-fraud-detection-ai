@@ -10,5 +10,4 @@ pyaadhaar
 numpy
 pandas
 python-dateutil
-matplotlib
 gunicorn
