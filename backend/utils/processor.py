@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import tempfile
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+
 # --- Environment-aware paths for Render & local ---
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join("backend", "models", "best.pt"))
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", os.path.join("backend", "uploads"))
@@ -56,8 +57,15 @@ def is_aadhaar_image(image_bytes):
     try:
         # Convert bytes to PIL Image
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+
+        # ✅ Downscale very large images before OCR (Render safe)
+        max_side = 1024
+        if max(image.size) > max_side:
+            print(f"⚙️ Downscaling image from {image.size} to max {max_side}px")
+            image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+
         img_np = np.array(image)
-        
+
         # Basic checks without OCR if Tesseract not available
         if not TESSERACT_AVAILABLE:
             width, height = image.size
@@ -75,11 +83,17 @@ def is_aadhaar_image(image_bytes):
                 "size_valid": valid_size,
                 "detected_text_snippets": "OCR not available"
             }
-        
-        # Heuristic 1: Check for Aadhaar-specific text patterns
+
+        # ✅ Environment-safe paths for Render
+        os.environ["TESSDATA_PREFIX"] = "/usr/share/tesseract-ocr/4.00/tessdata"
+        os.environ["TMPDIR"] = "/tmp"
+
+        # Heuristic 1: Aadhaar-specific text patterns
         processed_img = preprocess_for_ocr_full(image)
-        text = pytesseract.image_to_string(processed_img, config="--psm 6").lower()
-        
+        text = pytesseract.image_to_string(
+            processed_img, config="--psm 6 --oem 1", timeout=10
+        ).lower()
+
         aadhaar_keywords = [
             'aadhaar', 'aadhar', 'uidai', 'government of india',
             'unique identification authority', 'dob', 'date of birth',
@@ -88,32 +102,26 @@ def is_aadhaar_image(image_bytes):
         
         keyword_matches = sum(1 for keyword in aadhaar_keywords if keyword in text)
         
-        # Heuristic 2: Check for 12-digit Aadhaar number pattern
+        # Heuristic 2: Aadhaar 12-digit number pattern
         aadhaar_pattern = re.findall(r'\b\d{4}\s?\d{4}\s?\d{4}\b', text)
         
-        # Heuristic 3: Check aspect ratio
+        # Heuristic 3: Aspect ratio
         width, height = image.size
         aspect_ratio = width / height
         valid_aspect = 1.5 <= aspect_ratio <= 2.0
         
-        # Heuristic 4: Check image dimensions
+        # Heuristic 4: Image dimensions
         min_dimension = min(width, height)
         valid_size = min_dimension >= 300
         
-        # Calculate confidence score
+        # Confidence score
         confidence = 0
-        
-        # Text content (40% weight)
         if keyword_matches >= 2:
             confidence += 40
         elif keyword_matches >= 1:
             confidence += 20
-            
-        # Aadhaar number pattern (30% weight)
         if aadhaar_pattern:
             confidence += 30
-            
-        # Image characteristics (30% weight)
         if valid_aspect:
             confidence += 15
         if valid_size:
@@ -126,7 +134,7 @@ def is_aadhaar_image(image_bytes):
             "size_valid": valid_size,
             "detected_text_snippets": text[:200] + "..." if len(text) > 200 else text
         }
-        
+
     except Exception as e:
         return False, 0, {"error": str(e)}
 
@@ -152,7 +160,7 @@ def preprocess_for_ocr(crop):
 def ocr_text(image, label):
     """OCR text extraction, configured for cropped fields."""
     if not TESSERACT_AVAILABLE:
-        return f"OCR_{label}"  # Return mock text
+        return f"OCR_{label}"  # Mock fallback
     
     label_lower = label.lower()
     
@@ -163,7 +171,12 @@ def ocr_text(image, label):
     else:
         config = "--psm 6"
     
-    text = pytesseract.image_to_string(image, config=config)
+    # Safe OCR with timeout
+    try:
+        text = pytesseract.image_to_string(image, config=config, timeout=10)
+    except Exception as e:
+        print(f"⚠️ OCR timeout for {label}: {e}")
+        return ""
     return text.strip().replace('\n', ' ')
 
 # -------------------- QR CODE DECODING --------------------
@@ -182,7 +195,6 @@ def decode_secure_qr(image_np):
         if isSecureQr(qrData):
             secure_qr = AadhaarSecureQr(int(qrData))
             decoded_data = secure_qr.decodeddata()
-            # Convert to JSON-serializable format
             return dict(decoded_data) if hasattr(decoded_data, '__dict__') else decoded_data
         else:
             return {"error": "QR code is not a valid Secure Aadhaar QR."}
@@ -488,8 +500,9 @@ def process_single_image_bytes(front_bytes, back_bytes=None, do_qr_check=False, 
     return make_serializable(results)
 
 # -------------------- BATCH PROCESSING --------------------
+# -------------------- BATCH PROCESSING --------------------
 def process_zip_bytes(zip_bytes, model_path=None, do_qr_check=False, device="cpu", max_files=None):
-    """Process multiple images from ZIP file with memory management"""
+    """Process multiple images from ZIP file with memory management and Render-safe OCR"""
     results = []
     
     if not YOLO_AVAILABLE:
@@ -502,9 +515,9 @@ def process_zip_bytes(zip_bytes, model_path=None, do_qr_check=False, device="cpu
     try:
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as z:
             # Get all image files
-            members = [n for n in z.namelist() if n.lower().endswith((".jpg",".jpeg",".png",".bmp",".tiff"))]
+            members = [n for n in z.namelist() if n.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".tiff"))]
             
-            # Optional: Limit files for very large batches to prevent timeout
+            # Optional: Limit files for very large batches
             if max_files and len(members) > max_files:
                 print(f"⚠️ Limiting processing to first {max_files} files out of {len(members)}")
                 members = members[:max_files]
@@ -518,55 +531,71 @@ def process_zip_bytes(zip_bytes, model_path=None, do_qr_check=False, device="cpu
             for name in members:
                 try:
                     processed_count += 1
-                    
                     with z.open(name) as f:
                         img_bytes = f.read()
-                        
-                        print(f"🔍 [{processed_count}/{len(members)}] Processing: {name}")
-                        
-                        # Verify if it's an Aadhaar image first
-                        is_aadhaar, confidence, details = is_aadhaar_image(img_bytes)
-                        
-                        if not is_aadhaar:
-                            error_count += 1
-                            results.append({
-                                "filename": name,
-                                "error": "NOT_AADHAAR",
-                                "message": "The image does not appear to be an Aadhaar card", 
-                                "confidence_score": confidence,
-                                "aadhaar_verification_details": details,
-                                "assessment": "INVALID_INPUT"
-                            })
-                            continue
-                        
-                        # Process as Aadhaar card
-                        rec = process_single_image_bytes(
-                            img_bytes, 
-                            back_bytes=None, 
-                            do_qr_check=do_qr_check, 
-                            model_path=model_path, 
-                            device=device
-                        )
-                        rec["filename"] = name
-                        
-                        if rec.get("error"):
-                            error_count += 1
-                        else:
-                            success_count += 1
-                            
-                        results.append(rec)
-                        
-                        print(f"✅ [{processed_count}/{len(members)}] Completed: {name} - Status: {rec.get('assessment', 'UNKNOWN')}")
-                        
+
+                    print(f"🔍 [{processed_count}/{len(members)}] Processing: {name}")
+
+                    # ✅ Render memory safety: skip files over ~6 MB
+                    if len(img_bytes) > 6 * 1024 * 1024:
+                        print(f"⚠️ Skipping {name} - too large ({len(img_bytes)/1024/1024:.2f} MB)")
+                        results.append({
+                            "filename": name,
+                            "error": "TOO_LARGE",
+                            "message": "File exceeds safe size limit for Render free tier",
+                            "assessment": "SKIPPED"
+                        })
+                        error_count += 1
+                        continue
+
+                    # ✅ Verify if it's an Aadhaar image first (with downscaling + timeout safety)
+                    is_aadhaar, confidence, details = is_aadhaar_image(img_bytes)
+
+                    if not is_aadhaar:
+                        error_count += 1
+                        results.append({
+                            "filename": name,
+                            "error": "NOT_AADHAAR",
+                            "message": "The image does not appear to be an Aadhaar card", 
+                            "confidence_score": confidence,
+                            "aadhaar_verification_details": details,
+                            "assessment": "INVALID_INPUT"
+                        })
+                        continue
+
+                    # ✅ Process as Aadhaar card (Render-safe)
+                    rec = process_single_image_bytes(
+                        img_bytes, 
+                        back_bytes=None, 
+                        do_qr_check=do_qr_check, 
+                        model_path=model_path, 
+                        device=device
+                    )
+
+                    rec["filename"] = name
+
+                    if rec.get("error"):
+                        error_count += 1
+                    else:
+                        success_count += 1
+
+                    results.append(rec)
+
+                    print(f"✅ [{processed_count}/{len(members)}] Completed: {name} - Status: {rec.get('assessment', 'UNKNOWN')}")
+
+                    # ✅ Memory cleanup between files
+                    import gc
+                    gc.collect()
+
                 except Exception as e:
                     error_count += 1
                     print(f"❌ [{processed_count}/{len(members)}] Error processing {name}: {str(e)}")
                     results.append({
-                        "filename": name, 
+                        "filename": name,
                         "error": f"Processing error: {str(e)}",
                         "assessment": "ERROR"
                     })
-                    
+
     except Exception as e:
         print(f"❌ ZIP processing failed: {str(e)}")
         results.append({
