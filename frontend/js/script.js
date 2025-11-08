@@ -234,13 +234,17 @@ async function handleVerificationSubmit(e) {
         
         if (!response.ok) {
             let errorMessage = `HTTP error! status: ${response.status}`;
+            const cloned = response.clone(); // ✅ allows one more read
             try {
-                const errorData = await response.json();
+                const errorData = await cloned.json();
                 errorMessage = errorData.error || errorMessage;
             } catch (e) {
-                // If response is not JSON, use text
-                const errorText = await response.text();
-                errorMessage = errorText || errorMessage;
+                try {
+                    const errorText = await cloned.text();
+                    errorMessage = errorText || errorMessage;
+                } catch (inner) {
+                    console.warn("Could not parse error body:", inner);
+                }
             }
             throw new Error(errorMessage);
         }
