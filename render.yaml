@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: aadhaar-verify
-    env: docker
-    plan: free
-    region: oregon
-    dockerfilePath: ./Dockerfile
