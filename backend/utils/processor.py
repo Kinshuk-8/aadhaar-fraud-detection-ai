@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 import tempfile
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 
 # --- Environment-aware paths for Render & local ---
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join("backend", "models", "best.pt"))
@@ -58,11 +60,13 @@ def is_aadhaar_image(image_bytes):
         # Convert bytes to PIL Image
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
-        # ✅ Downscale very large images before OCR (Render safe)
-        max_side = 1024
-        if max(image.size) > max_side:
-            print(f"⚙️ Downscaling image from {image.size} to max {max_side}px")
-            image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+        # Smart resize: keep detail but limit memory
+        max_dim = 1280  # limit for Render safety but good OCR detail
+        width, height = image.size
+        if max(width, height) > max_dim:
+            scale = max_dim / max(width, height)
+            new_size = (int(width * scale), int(height * scale))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
 
         img_np = np.array(image)
 
@@ -585,6 +589,8 @@ def process_zip_bytes(zip_bytes, model_path=None, do_qr_check=False, device="cpu
 
                     # ✅ Memory cleanup between files
                     import gc
+                    import time
+                    time.sleep(0.5)
                     gc.collect()
 
                 except Exception as e:
