@@ -13,6 +13,7 @@ os.environ["MKL_NUM_THREADS"] = "1"
 
 # --- Environment-aware paths for Render & local ---
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join("backend", "models", "best.pt"))
+FACE_MODEL_PATH = os.environ.get("FACE_MODEL_PATH", os.path.join("backend", "models", "yolov8n.pt"))
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", os.path.join("backend", "uploads"))
 
 # Ensure upload directory exists
@@ -303,20 +304,26 @@ def process_single_image_bytes(front_bytes, back_bytes=None, do_qr_check=False, 
     
     # Load models
     try:
+    # ✅ Load your fine-tuned Aadhaar YOLO model (best.pt)
         if model_path and os.path.exists(model_path):
             custom_model = YOLO(model_path)
             custom_model.to("cpu")
         else:
-            custom_model = YOLO("yolov8n.pt")
-            custom_model.to("cpu")  # Fallback
-        
-        general_model = YOLO("yolov8n.pt")
-        general_model.to("cpu")  # For face detection
-        
+            # Fallback to MODEL_PATH environment variable (set in app.py)
+            custom_model_path = os.environ.get("MODEL_PATH", os.path.join("backend", "models", "best.pt"))
+            custom_model = YOLO(custom_model_path)
+            custom_model.to("cpu")
+    # ✅ Load general YOLO model (yolov8n.pt) for face detection
+        face_model_path = os.environ.get("FACE_MODEL_PATH", os.path.join("backend", "models", "yolov8n.pt"))
+        general_model = YOLO(face_model_path)
+        general_model.to("cpu")
+
+    # ✅ Move both to selected device (CPU or GPU)
         custom_model.to(device)
         general_model.to(device)
+
     except Exception as e:
-        device = "cpu"  # Fallback to CPU
+        device = "cpu"  # Fallback to CPU for safety
         print(f"⚠️ Model loading error: {e}")
 
     # Convert bytes to PIL

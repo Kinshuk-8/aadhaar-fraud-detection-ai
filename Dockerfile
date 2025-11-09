@@ -1,28 +1,46 @@
-# Use official Python image
+# ─────────────────────────────────────────────
+# ✅ 1. Use lightweight Python image
 FROM python:3.10-slim
 
-# Install system dependencies
+# ─────────────────────────────────────────────
+# ✅ 2. Install system dependencies required for OCR and YOLO
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libzbar0 \
     libgl1 \
  && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# ─────────────────────────────────────────────
+# ✅ 3. Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY . .
+# ─────────────────────────────────────────────
+# ✅ 4. Copy only requirements first (to leverage Docker caching)
+COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies (no cache to keep image small)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Create necessary folders
+# ─────────────────────────────────────────────
+# ✅ 5. Copy the rest of the project files
+COPY . .
+
+# ─────────────────────────────────────────────
+# ✅ 6. Create runtime directories
 RUN mkdir -p backend/models backend/uploads /tmp/uploads
 
-# Expose port
-EXPOSE 5000
+# ─────────────────────────────────────────────
+# ✅ 7. Set environment variables for production
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
 
-# Start app with Gunicorn
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000"]
+# ─────────────────────────────────────────────
+# ✅ 8. Expose Railway default port
+EXPOSE 8080
+
+# ─────────────────────────────────────────────
+# ✅ 9. Start the app with Gunicorn (using the correct port)
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--timeout", "300"]
